@@ -1,90 +1,37 @@
-# pages/home.py
 import dash
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
+import numpy as np
 
 from olist.seller_updated import Seller
 
-dash.register_page(__name__, path="/", name="Özet (CEO)")
-
-# -----------------------------
-# Data
-# -----------------------------
-def load_sellers():
-    seller = Seller()
-    return seller.get_training_data()
-
-# -----------------------------
-# Formatting
-# -----------------------------
-def brl(value: float) -> str:
-    return f"{value:,.0f} BRL"
+dash.register_page(__name__, path="/", name="CEO Özeti")
 
 CARD_STYLE = {"borderRadius": "14px"}
-SECTION_CARD_CLASS = "shadow-sm mt-3"
 
-# -----------------------------
-# IT cost (home & seller_impact aynı olmalı)
-# -----------------------------
-# Eğer seller_impact içinde farklı bir IT hesabı kullanıyorsanız,
-# burayı onunla birebir aynı yapın.
-IT_BASE = 200_000
-IT_PER_SELLER = 50
-IT_PER_ITEM = 1.35
+# Seller Impact ile aynı IT maliyeti modeli (senkron olsun diye)
+ALPHA, BETA = 3157.27, 978.23
 
-def compute_it_cost(n_sellers: int, n_items: int) -> float:
-    return IT_BASE + IT_PER_SELLER * n_sellers + IT_PER_ITEM * n_items
+def cost_of_it(n_sellers: int, quantity: float) -> float:
+    return ALPHA * (n_sellers ** 0.5) + BETA * (quantity ** 0.5)
 
-# -----------------------------
-# KPI + Waterfall
-# -----------------------------
-def build_kpis(sellers_df):
-    # Gelir kırılımı
-    gelir_satis_komisyonu = sellers_df["sales"].sum() * 0.10
-    gelir_abonelik = sellers_df["months_on_olist"].sum() * 80
-    toplam_gelir = gelir_satis_komisyonu + gelir_abonelik
+def load_sellers():
+    return Seller().get_training_data()
 
-    # Maliyetler
-    maliyet_review = sellers_df["cost_of_reviews"].sum()
+def tl(value):
+    return f"{value:,.0f} BRL"
 
-    # IT maliyeti (dinamik/varsayım)
-    n_sellers = sellers_df["seller_id"].nunique()
-    n_items = int(sellers_df["quantity"].sum())
-    it_maliyeti = compute_it_cost(n_sellers, n_items)
-
-    # Kâr
-    brut_kar = toplam_gelir - maliyet_review
-    net_kar = brut_kar - it_maliyeti
-
-    return {
-        "gelir_satis_komisyonu": gelir_satis_komisyonu,
-        "gelir_abonelik": gelir_abonelik,
-        "toplam_gelir": toplam_gelir,
-        "maliyet_review": maliyet_review,
-        "it_maliyeti": it_maliyeti,
-        "brut_kar": brut_kar,
-        "net_kar": net_kar,
-        "n_sellers": n_sellers,
-        "n_items": n_items,
-    }
-
-def kpi_card(title: str, value: float, subtitle: str = "", icon: str = ""):
+def kpi_card(title, value, subtitle="", icon=""):
     return dbc.Card(
         dbc.CardBody(
             [
-                html.Div(
-                    [
-                        html.Span(icon, style={"fontSize": "18px", "marginRight": "8px"}) if icon else None,
-                        html.Span(title, className="text-muted"),
-                    ],
-                    style={"display": "flex", "alignItems": "center"},
-                ),
-                html.H3(brl(value), className="mt-2 mb-1"),
+                html.Div(f"{icon}  {title}".strip(), className="text-muted"),
+                html.H3(tl(value), className="mt-1"),
                 html.Div(subtitle, className="text-muted"),
             ]
         ),
-        className="shadow-sm h-100",
+        className="shadow-sm",
         style=CARD_STYLE,
     )
 
@@ -113,92 +60,74 @@ def build_waterfall(k):
             ],
         )
     )
-
     fig.update_layout(
         title="Gelir–Maliyet Akışı",
-        height=450,
         margin=dict(l=30, r=30, t=60, b=30),
-        showlegend=False,
+        height=460,
     )
     return fig
 
-# -----------------------------
-# Build page
-# -----------------------------
-sellers_df = load_sellers()
-k = build_kpis(sellers_df)
+sellers = load_sellers()
+
+gelir_satis_komisyonu = sellers["sales"].sum() * 0.10
+gelir_abonelik = sellers["months_on_olist"].sum() * 80
+toplam_gelir = sellers["revenues"].sum()
+
+maliyet_review = sellers["cost_of_reviews"].sum()
+
+n_sellers = int(sellers["seller_id"].nunique())
+quantity = float(sellers["quantity"].sum())
+it_maliyeti = cost_of_it(n_sellers, quantity)
+
+brut_kar = sellers["profits"].sum()
+net_kar = brut_kar - it_maliyeti
+
+k = {
+    "gelir_satis_komisyonu": gelir_satis_komisyonu,
+    "gelir_abonelik": gelir_abonelik,
+    "toplam_gelir": toplam_gelir,
+    "maliyet_review": maliyet_review,
+    "it_maliyeti": it_maliyeti,
+    "brut_kar": brut_kar,
+    "net_kar": net_kar,
+    "n_sellers": n_sellers,
+    "quantity": quantity,
+}
+
 wf_fig = build_waterfall(k)
 
 layout = dbc.Container(
     [
-        # Header
         html.H2("CEO Özeti", className="mt-4"),
         html.P(
             "Bu sayfa mevcut durumu (hiç satıcı çıkarmadan) gelir–maliyet–kâr kırılımıyla özetler.",
             className="text-muted",
         ),
 
-        # KPI row (logit sayfasındaki gibi)
         dbc.Row(
             [
-                dbc.Col(
-                    kpi_card(
-                        "Toplam Gelir",
-                        k["toplam_gelir"],
-                        "Abonelik + Komisyon",
-                        icon="💰",
-                    ),
-                    md=3,
-                ),
-                dbc.Col(
-                    kpi_card(
-                        "Review Maliyeti",
-                        k["maliyet_review"],
-                        "Müşteri memnuniyetsizliği maliyeti",
-                        icon="🧾",
-                    ),
-                    md=3,
-                ),
-                dbc.Col(
-                    kpi_card(
-                        "IT / Operasyon Maliyeti",
-                        k["it_maliyeti"],
-                        f"{k['n_sellers']} satıcı • {k['n_items']:,} ürün (varsayım)",
-                        icon="🖥️",
-                    ),
-                    md=3,
-                ),
-                dbc.Col(
-                    kpi_card(
-                        "Net Kâr",
-                        k["net_kar"],
-                        "Brüt Kâr - IT",
-                        icon="📈",
-                    ),
-                    md=3,
-                ),
+                dbc.Col(kpi_card("Toplam Gelir", k["toplam_gelir"], "Abonelik + Komisyon", "💰"), md=3),
+                dbc.Col(kpi_card("Review Maliyeti", k["maliyet_review"], "Memnuniyetsizliğin finansal yükü", "🧾"), md=3),
+                dbc.Col(kpi_card("IT / Operasyon Maliyeti", k["it_maliyeti"], f"{k['n_sellers']} satıcı • {int(k['quantity']):,} ürün (varsayım)", "🖥️"), md=3),
+                dbc.Col(kpi_card("Net Kâr", k["net_kar"], "Brüt Kâr - IT", "📈"), md=3),
             ],
             className="g-3",
         ),
 
-        # Main chart section
         dbc.Card(
             dbc.CardBody(
                 [
                     html.Div(
-                        "Nasıl okunur? Yeşil bloklar geliri, kırmızı bloklar maliyetleri gösterir. "
-                        "En sağdaki Net Kâr, tüm gelirlerden tüm maliyetler çıktıktan sonra kalan tutardır.",
+                        "Nasıl okunur? Yeşil bloklar geliri, kırmızı bloklar maliyetleri gösterir. En sağdaki Net Kâr, tüm gelirlerden tüm maliyetler çıktıktan sonra kalan tutardır.",
                         className="text-muted",
-                        style={"marginBottom": "10px"},
                     ),
-                    dcc.Graph(figure=wf_fig, config={"displayModeBar": True}),
+                    dcc.Graph(figure=wf_fig, className="mt-2"),
                 ]
             ),
-            className=SECTION_CARD_CLASS,
+            className="shadow-sm mt-3",
             style=CARD_STYLE,
         ),
 
-        # Insights section (logit sayfasındaki “Özet çıkarımlar” gibi)
         dbc.Card(
             dbc.CardBody(
                 [
@@ -213,11 +142,10 @@ layout = dbc.Container(
                     ),
                 ]
             ),
-            className=SECTION_CARD_CLASS,
+            className="shadow-sm mt-3",
             style=CARD_STYLE,
         ),
 
-        # CTA / next step (seller_impact’e köprü kuran)
         dbc.Alert(
             [
                 html.B("Sonraki adım: "),

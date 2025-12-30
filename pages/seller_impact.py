@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 
 from olist.seller_updated import Seller
 
-dash.register_page(__name__, path="/seller-impact", name="Satıcı Çıkarma Etkisi")
+dash.register_page(__name__, path="/satici-etkisi", name="Satıcı Çıkarma Etkisi")
 
 # -----------------------------
 # Styling helpers (home + logit ile uyumlu)

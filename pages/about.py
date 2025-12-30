@@ -3,7 +3,7 @@ import dash
 from dash import html
 import dash_bootstrap_components as dbc
 
-dash.register_page(__name__, path="/about", name="Hakkında")
+dash.register_page(__name__, path="/hakkinda", name="Hakkında")
 
 CARD_STYLE = {"borderRadius": "14px"}
 SECTION_CARD_CLASS = "shadow-sm mt-3"

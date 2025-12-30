@@ -1,4 +1,3 @@
-# app.py
 import dash
 from dash import Dash, html
 import dash_bootstrap_components as dbc
@@ -10,27 +9,40 @@ app = Dash(
     suppress_callback_exceptions=True,
 )
 
-navbar = dbc.NavbarSimple(
-    children=[
-        dbc.NavItem(dbc.NavLink("Ana Sayfa", href="/")),
-        dbc.DropdownMenu(
-            children=[
-                dbc.DropdownMenuItem(page["name"], href=page["relative_path"])
-                for page in dash.page_registry.values()
-                if page["path"] != "/"
-            ],
-            nav=True,
-            in_navbar=True,
-            label="Sayfalar",
-        ),
-    ],
-    brand="Olist CEO Talebi Dashboard",
-    brand_href="/",
+# Net menü sırası (storytelling)
+NAV_ITEMS = [
+    ("Memnuniyet Sürücüleri", "/memnuniyet"),
+    ("CEO Özeti", "/"),
+    ("Satıcı Çıkarma Etkisi", "/satici-etkisi"),
+    ("Hakkında", "/hakkinda"),
+]
+
+navbar = dbc.Navbar(
+    dbc.Container(
+        [
+            dbc.NavbarBrand("Olist CEO Talebi Dashboard", href="/"),
+            dbc.Nav(
+                [
+                    dbc.NavItem(dbc.NavLink(label, href=path, active="exact"))
+                    for label, path in NAV_ITEMS
+                ],
+                className="ms-auto",
+                navbar=True,
+                pills=True,
+            ),
+        ]
+    ),
     color="primary",
     dark=True,
+    className="shadow-sm",
 )
 
-app.layout = html.Div([navbar, dash.page_container])
+app.layout = html.Div(
+    [
+        navbar,
+        dash.page_container,
+    ]
+)
 
 if __name__ == "__main__":
     app.run(debug=True)

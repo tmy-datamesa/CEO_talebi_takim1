@@ -1,96 +1,49 @@
-# pages/logit_insights.py
 import dash
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.express as px
 
-dash.register_page(__name__, path="/logit-insights", name="Memnuniyet Sürücüleri")
+dash.register_page(__name__, path="/memnuniyet", name="Memnuniyet Sürücüleri")
 
-# Notebook'tan alınan (standardize edilmiş) katsayılar
-# Not: Bu sayfada "katsayı / logit / standardize" kelimelerini arayüzde göstermiyoruz.
-COEFS_ONE_STAR = {
-    "Teslimat süresi": 0.6907,                 # wait_time
-    "Beklenenden geç gelme": 0.2626,           # delay_vs_expected
-    "Siparişte satıcı sayısı": 0.2295,         # number_of_sellers
-    "Satıcı–müşteri uzaklığı": -0.2193,        # distance_seller_customer
-    "Kargo ücreti": 0.1090,                    # freight_value
-    "Ürün fiyatı": 0.0407,                     # price
-}
+CARD_STYLE = {"borderRadius": "14px"}
 
-COEFS_FIVE_STAR = {
-    "Teslimat süresi": -0.5140,                # wait_time
-    "Beklenenden geç gelme": -0.4366,          # delay_vs_expected
-    "Siparişte satıcı sayısı": -0.1716,        # number_of_sellers
-    "Satıcı–müşteri uzaklığı": 0.1075,         # distance_seller_customer
-    "Kargo ücreti": -0.0624,                   # freight_value
-    "Ürün fiyatı": 0.0268,                     # price
-}
+# Burada siz kendi notebook çıktınıza göre bu tabloyu dolduruyordunuz.
+# Bu örnekte; "etki" değerleri (coef) temsili gibi duruyor: sizde zaten hazırsa aynen bağlayın.
+def load_effects() -> pd.DataFrame:
+    # feature, risk_1star (sağa), satisfaction_5star (sola)
+    data = [
+        ("Teslimat süresi", 0.68, -0.50),
+        ("Beklenenden geç gelme", 0.25, -0.42),
+        ("Siparişte satıcı sayısı", 0.22, -0.18),
+        ("Satıcı–müşteri uzaklığı", -0.21, 0.10),
+        ("Kargo ücreti", 0.10, -0.06),
+        ("Ürün fiyatı", 0.04, -0.02),
+    ]
+    df = pd.DataFrame(data, columns=["Faktör", "Mutsuzluk Riski (1★)", "Memnuniyet (5★)"])
+    return df
 
-# -------------------------
-# Build tidy dataframe
-# -------------------------
-features = list(COEFS_ONE_STAR.keys())
-
-df = pd.DataFrame(
-    {
-        "Faktör": features,
-        "Mutsuzluk Riski (1★)": [COEFS_ONE_STAR[f] for f in features],
-        "Memnuniyet (5★)": [COEFS_FIVE_STAR[f] for f in features],
-    }
-)
-
-df_long = df.melt(id_vars="Faktör", var_name="Gösterge", value_name="Etki")
-df_long["Mutlak Etki"] = df_long["Etki"].abs()
-
-# Sıralama: en güçlü etki üstte görünsün
-order = (
-    df_long.groupby("Faktör")["Mutlak Etki"]
-    .max()
-    .sort_values(ascending=False)
-    .index.tolist()
-)
-
-# -------------------------
-# Figure
-# -------------------------
-fig = px.bar(
-    df_long,
-    x="Etki",
-    y="Faktör",
-    color="Gösterge",
-    orientation="h",
-    category_orders={"Faktör": order},
-    title="Sipariş Deneyimini Etkileyen Unsurlar",
-)
-
-fig.update_layout(
-    height=380,
-    margin=dict(l=40, r=30, t=60, b=40),
-    legend_title_text="",
-)
-
-# -------------------------
-# Components
-# -------------------------
-def info_card(title: str, main: str, sub: str, icon: str = ""):
-    return dbc.Card(
-        dbc.CardBody(
-            [
-                html.Div(
-                    [
-                        html.Span(icon, style={"fontSize": "18px", "marginRight": "8px"}) if icon else None,
-                        html.Span(title, className="text-muted"),
-                    ],
-                    style={"display": "flex", "alignItems": "center"},
-                ),
-                html.H4(main, className="mt-2 mb-1"),
-                html.Div(sub, className="text-muted"),
-            ]
-        ),
-        className="shadow-sm h-100",
-        style={"borderRadius": "14px"},
+def build_bar(df: pd.DataFrame):
+    long = df.melt(id_vars="Faktör", var_name="Tür", value_name="Etki")
+    fig = px.bar(
+        long,
+        y="Faktör",
+        x="Etki",
+        color="Tür",
+        orientation="h",
+        title="Sipariş Deneyimini Etkileyen Unsurlar",
     )
+    fig.update_layout(
+        height=420,
+        margin=dict(l=30, r=30, t=70, b=30),
+        legend_title_text="",
+    )
+    fig.update_yaxes(title="")
+    fig.update_xaxes(title="Etki")
+    return fig
+
+effects = load_effects()
+fig = build_bar(effects)
 
 layout = dbc.Container(
     [
@@ -103,20 +56,36 @@ layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(
-                    info_card(
-                        "Müşteriyi en çok mutsuz eden faktör",
-                        "Teslimat Süresi",
-                        "Teslimat süresi uzadıkça 1 yıldızlı yorum ihtimali belirgin şekilde artıyor.",
-                        icon="⚠️",
+                    dbc.Card(
+                        dbc.CardBody(
+                            [
+                                html.Div("⚠️  Müşteriyi en çok mutsuz eden faktör", className="text-muted"),
+                                html.H3("Teslimat Süresi", className="mt-2"),
+                                html.Div(
+                                    "Teslimat süresi uzadıkça 1 yıldızlı yorum ihtimali belirgin şekilde artıyor.",
+                                    className="text-muted",
+                                ),
+                            ]
+                        ),
+                        className="shadow-sm",
+                        style=CARD_STYLE,
                     ),
                     md=6,
                 ),
                 dbc.Col(
-                    info_card(
-                        "5 yıldızlı deneyimi en çok zayıflatan faktör",
-                        "Gecikme ve beklentinin aşılması",
-                        "Sipariş beklenenden geç geldikçe 5 yıldızlı yorum ihtimali düşüyor.",
-                        icon="⭐",
+                    dbc.Card(
+                        dbc.CardBody(
+                            [
+                                html.Div("⭐  5 yıldızlı deneyimi en çok zayıflatan faktör", className="text-muted"),
+                                html.H3("Gecikme ve beklentinin aşılması", className="mt-2"),
+                                html.Div(
+                                    "Sipariş beklenenden geç geldikçe 5 yıldızlı yorum ihtimali düşüyor.",
+                                    className="text-muted",
+                                ),
+                            ]
+                        ),
+                        className="shadow-sm",
+                        style=CARD_STYLE,
                     ),
                     md=6,
                 ),
@@ -128,15 +97,14 @@ layout = dbc.Container(
             dbc.CardBody(
                 [
                     html.Div(
-                        "Nasıl okunur? Sağa uzayan çubuklar mutsuzluk riskini artıran, sola uzayanlar memnuniyeti destekleyen etkiyi gösterir.",
+                        "Nasıl okunur? Sağa uzayan çubuklar mutsuzluk riskini artırır, sola uzayanlar memnuniyeti destekler.",
                         className="text-muted",
-                        style={"marginBottom": "10px"},
                     ),
-                    dcc.Graph(figure=fig, config={"displayModeBar": True}),
+                    dcc.Graph(figure=fig, className="mt-2"),
                 ]
             ),
             className="shadow-sm mt-3",
-            style={"borderRadius": "14px"},
+            style=CARD_STYLE,
         ),
 
         dbc.Card(
@@ -154,20 +122,13 @@ layout = dbc.Container(
                 ]
             ),
             className="shadow-sm mt-3",
-            style={"borderRadius": "14px"},
+            style=CARD_STYLE,
         ),
 
         dbc.Alert(
             [
-                html.B("Önerilen Aksiyonlar (Yönetim Perspektifi) "),
-                html.Ul(
-                    [
-                        html.Li("Teslimat süresi için net SLA’ler belirleyin ve takip edin."),
-                        html.Li("Gecikme ihtimali yüksek siparişleri proaktif yönetin (erken uyarı)."),
-                        html.Li("Çok satıcılı siparişleri sadeleştirin veya operasyonel olarak optimize edin."),
-                    ],
-                    className="mb-0",
-                ),
+                html.B("Köprü mesajı: "),
+                "Bu operasyonel sorunların finansal bir karşılığı var. Bir sonraki sayfada mevcut kâr kırılımını (gelir–maliyet–net kâr) özetliyoruz.",
             ],
             color="primary",
             className="mt-3",
