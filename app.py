@@ -2,8 +2,8 @@ import dash
 from dash import Dash, html
 import dash_bootstrap_components as dbc
 
-# BI görünüm: daha “kurumsal + modern” bir tema
-THEME = dbc.themes.FLATLY  # MORPH yerine daha dashboard hissi verir
+# BI görünüm: kurumsal + okunaklı bir tema
+THEME = dbc.themes.FLATLY
 
 app = Dash(
     __name__,
@@ -12,16 +12,16 @@ app = Dash(
     suppress_callback_exceptions=True,
 )
 
-# Net menü sırası (storytelling)
+# Net menü sırası (storytelling) — Set A
 NAV_ITEMS = [
-    ("📌 Memnuniyet Sürücüleri", "/memnuniyet"),
-    ("💼 CEO Özeti", "/"),
-    ("🧩 Satıcı Çıkarma Etkisi", "/satici-etkisi"),
-    ("ℹ️ Hakkında", "/hakkinda"),
+    ("Memnuniyet Sürücüleri", "/memnuniyet"),
+    ("Finansal Özet", "/"),
+    ("Portföy Optimizasyonu", "/satici-etkisi"),
+    ("Metodoloji", "/hakkinda"),
 ]
 
 BRAND_STYLE = {
-    "fontWeight": "700",
+    "fontWeight": "800",
     "letterSpacing": "0.2px",
 }
 
@@ -30,10 +30,7 @@ navbar = dbc.Navbar(
         [
             # Sol taraf: marka
             dbc.NavbarBrand(
-                html.Span(
-                    ["📊 ", html.Span("Olist", style={"fontWeight": "800"}), " | Yönetim İçgörü Paneli"],
-                    style=BRAND_STYLE,
-                ),
+                html.Span(["Olist", " | Yönetim İçgörü Paneli"], style=BRAND_STYLE),
                 href="/",
                 className="me-3",
             ),
