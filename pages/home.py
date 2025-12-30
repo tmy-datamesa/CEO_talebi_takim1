@@ -9,7 +9,8 @@ dash.register_page(__name__, path="/", name="Özet (CEO)")
 
 def load_sellers():
     seller = Seller()
-    return seller.get_training_data()
+    sellers = seller.get_training_data()
+    return sellers
 
 def build_kpis(sellers):
     gelir_satis_komisyonu = sellers.sales.sum() * 0.10
