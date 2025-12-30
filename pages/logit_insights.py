@@ -55,10 +55,6 @@ def _card(title: str, body: list, icon: str):
 
 
 def build_bar(df: pd.DataFrame, col: str, title: str, color_hex: str):
-    """
-    col: DataFrame'deki kolon adı (ör. '1★ Riski Artıran Etki')
-    title: Grafik başlığı
-    """
     d = df.sort_values(col, ascending=True).copy()
 
     fig = px.bar(
@@ -112,8 +108,6 @@ fig_5 = build_bar(
     color_hex="#00CC96",
 )
 
-
-# En kritik başlıkları kartta göstermek için
 top_1_risk = df.sort_values("1★ Riski Artıran Etki", ascending=False).iloc[0]["Faktör"]
 top_5_drop = df.sort_values("5★ Memnuniyeti Azaltan Etki", ascending=False).iloc[0]["Faktör"]
 
@@ -140,7 +134,11 @@ layout = dbc.Container(
                     _card(
                         "KRİTİK RİSK NOKTASI (1★)",
                         [
-                            html.H3("Teslimat Süresi", className="mt-2 mb-1 fw-bold", style={"color": "#EF553B"}),
+                            html.H3(
+                                "Teslimat Süresi",
+                                className="mt-2 mb-1 fw-bold",
+                                style={"color": "#EF553B"},
+                            ),
                             html.Div(
                                 "Teslimat uzadıkça düşük puan (1★) riski belirgin şekilde artıyor.",
                                 className="text-muted",
@@ -158,7 +156,11 @@ layout = dbc.Container(
                     _card(
                         "MEMNUNİYET KIRILIMI (5★)",
                         [
-                            html.H3("Gecikme / Beklentinin Aşılması", className="mt-2 mb-1 fw-bold", style={"color": "#636EFA"}),
+                            html.H3(
+                                "Gecikme / Beklentinin Aşılması",
+                                className="mt-2 mb-1 fw-bold",
+                                style={"color": "#636EFA"},
+                            ),
                             html.Div(
                                 "Sipariş beklenenden geç geldikçe 5★ olasılığı düşüyor.",
                                 className="text-muted",
@@ -203,9 +205,18 @@ layout = dbc.Container(
                                 html.H5("Net içgörüler", className="mb-3 fw-bold"),
                                 dbc.ListGroup(
                                     [
-                                        dbc.ListGroupItem("Operasyon (teslimat süresi + gecikme) memnuniyetin ana kaldıraçı.", className="border-0"),
-                                        dbc.ListGroupItem("Çok satıcılı siparişler (split shipment) müşteri deneyimini zorlaştırıyor.", className="border-0"),
-                                        dbc.ListGroupItem("Fiyat/kargo etkili ama operasyonel etkiler kadar belirleyici değil.", className="border-0"),
+                                        dbc.ListGroupItem(
+                                            "Operasyon (teslimat süresi + gecikme) memnuniyetin ana kaldıraçı.",
+                                            className="border-0",
+                                        ),
+                                        dbc.ListGroupItem(
+                                            "Çok satıcılı siparişler (split shipment) müşteri deneyimini zorlaştırıyor.",
+                                            className="border-0",
+                                        ),
+                                        dbc.ListGroupItem(
+                                            "Fiyat/kargo etkili ama operasyonel etkiler kadar belirleyici değil.",
+                                            className="border-0",
+                                        ),
                                     ],
                                     flush=True,
                                 ),
@@ -239,15 +250,29 @@ layout = dbc.Container(
             className="mt-4 g-4",
         ),
 
-        # Köprü mesajı
+        # ✅ Finansal bağlantı (koyu kutu - diğer sayfalarla uyumlu)
         dbc.Alert(
             [
-                html.B("Köprü mesajı: "),
-                "Bu operasyonel sorunlar finansal sonuca yansıyor. Bir sonraki sayfada gelir–maliyet–net kâr özetini gösteriyoruz.",
+                html.Div(
+                    [
+                        html.Span("🔗", className="me-2"),
+                        html.Span("Finansal Etki", className="fw-bold"),
+                    ],
+                    className="mb-1",
+                    style={"display": "flex", "alignItems": "center"},
+                ),
+                html.Div(
+                    "Bu operasyonel sorunlar sadece puanları değil, net kârı da eritiyor. "
+                    "Bir sonraki sayfada gelir → maliyet → net kâr kırılımıyla yönetim etkisini netleştiriyoruz.",
+                    className="mb-0",
+                ),
             ],
-            color="light",
-            className="mt-4 shadow-sm",
-            style={"borderRadius": "12px", "borderLeft": "5px solid #636EFA"},
+            color="dark",
+            className="mt-4 shadow-sm text-white",
+            style={
+                "borderRadius": "14px",
+                "borderLeft": "6px solid #636EFA",
+            },
         ),
     ],
     fluid=True,
