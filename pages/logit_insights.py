@@ -7,85 +7,129 @@ import plotly.express as px
 dash.register_page(__name__, path="/memnuniyet", name="Memnuniyet Sürücüleri")
 
 CARD_STYLE = {"borderRadius": "14px"}
+SECTION_CARD_CLASS = "shadow-sm mt-3"
 
-# Burada siz kendi notebook çıktınıza göre bu tabloyu dolduruyordunuz.
-# Bu örnekte; "etki" değerleri (coef) temsili gibi duruyor: sizde zaten hazırsa aynen bağlayın.
+
 def load_effects() -> pd.DataFrame:
-    # feature, risk_1star (sağa), satisfaction_5star (sola)
+    """
+    Bu değerler sizin logit çıktınızın 'sıralama' özetidir.
+    İsterseniz notebook'tan kendi katsayılarınızla güncelleyebilirsiniz.
+
+    risk_1star:
+      + ise 1★ riskini artırır (mutsuzluk artar)
+    impact_5star:
+      - ise 5★ olasılığını düşürür (memnuniyet düşer)
+    """
     data = [
         ("Teslimat süresi", 0.68, -0.50),
-        ("Beklenenden geç gelme", 0.25, -0.42),
+        ("Beklenenden geç gelme", 0.26, -0.42),
         ("Siparişte satıcı sayısı", 0.22, -0.18),
-        ("Satıcı–müşteri uzaklığı", -0.21, 0.10),
+        ("Satıcı–müşteri uzaklığı", -0.22, 0.10),
         ("Kargo ücreti", 0.10, -0.06),
-        ("Ürün fiyatı", 0.04, -0.02),
+        ("Ürün fiyatı", 0.03, -0.02),
     ]
-    df = pd.DataFrame(data, columns=["Faktör", "Mutsuzluk Riski (1★)", "Memnuniyet (5★)"])
-    return df
+    return pd.DataFrame(data, columns=["factor", "risk_1star", "impact_5star"])
 
-def build_bar(df: pd.DataFrame):
-    long = df.melt(id_vars="Faktör", var_name="Tür", value_name="Etki")
+
+def kpi_card(title: str, big_text: str, subtitle: str = "", icon: str = ""):
+    return dbc.Card(
+        dbc.CardBody(
+            [
+                html.Div(
+                    [
+                        html.Span(icon, style={"fontSize": "18px", "marginRight": "8px"}) if icon else None,
+                        html.Span(title, className="text-muted"),
+                    ],
+                    style={"display": "flex", "alignItems": "center"},
+                ),
+                html.H3(big_text, className="mt-2 mb-1"),
+                html.Div(subtitle, className="text-muted"),
+            ]
+        ),
+        className="shadow-sm h-100",
+        style=CARD_STYLE,
+    )
+
+
+def build_driver_chart(df: pd.DataFrame):
+    # Pozitif “problem etkisi” olarak göstereceğiz:
+    # - 1★ risk artışı: max(0, risk_1star)
+    # - 5★ kaybı: max(0, -impact_5star)
+    d = df.copy()
+    d["risk_artisi_1yildiz"] = d["risk_1star"].clip(lower=0)
+    d["kayıp_5yildiz"] = (-d["impact_5star"]).clip(lower=0)
+
+    # Yönetim gözüyle: en etkili olanlar üstte kalsın
+    d["toplam_etki"] = d[["risk_artisi_1yildiz", "kayıp_5yildiz"]].max(axis=1)
+    d = d.sort_values("toplam_etki", ascending=True)
+
+    long = d.melt(
+        id_vars=["factor"],
+        value_vars=["risk_artisi_1yildiz", "kayıp_5yildiz"],
+        var_name="metric",
+        value_name="value",
+    )
+
+    metric_map = {
+        "risk_artisi_1yildiz": "1★ Riski (artış)",
+        "kayıp_5yildiz": "5★ Memnuniyet (kayıp)",
+    }
+    long["metric"] = long["metric"].map(metric_map)
+
     fig = px.bar(
         long,
-        y="Faktör",
-        x="Etki",
-        color="Tür",
+        x="value",
+        y="factor",
+        color="metric",
+        barmode="group",
         orientation="h",
-        title="Sipariş Deneyimini Etkileyen Unsurlar",
+        title="Memnuniyet sürücüleri (özet sıralama)",
+        labels={"value": "Etki gücü (sıralama)", "factor": "", "metric": ""},
     )
     fig.update_layout(
         height=420,
-        margin=dict(l=30, r=30, t=70, b=30),
-        legend_title_text="",
+        margin=dict(l=40, r=20, t=70, b=35),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
     )
-    fig.update_yaxes(title="")
-    fig.update_xaxes(title="Etki")
+    fig.update_xaxes(showgrid=True, zeroline=False)
+    fig.update_yaxes(tickfont=dict(size=12))
     return fig
 
+
 effects = load_effects()
-fig = build_bar(effects)
+
+# KPI: en kritik 1★ risk artıran (pozitif en büyük)
+top_risk = effects.sort_values("risk_1star", ascending=False).iloc[0]["factor"]
+# KPI: 5★ en çok düşüren (en negatif)
+top_drop5 = effects.sort_values("impact_5star", ascending=True).iloc[0]["factor"]
+
+fig = build_driver_chart(effects)
 
 layout = dbc.Container(
     [
-        html.H2("Müşteri Memnuniyetini Etkileyen Faktörler", className="mt-4"),
+        html.H2("Müşteri Memnuniyeti Sürücüleri", className="mt-4"),
         html.P(
-            "Sipariş deneyiminde hangi unsurlar müşteriyi mutsuz ediyor, hangileri memnuniyeti artırıyor?",
+            "Kısaca: Müşteriyi mutsuz eden (1★) ve 5★ deneyimini zayıflatan başlıca operasyonel noktalar.",
             className="text-muted",
         ),
 
         dbc.Row(
             [
                 dbc.Col(
-                    dbc.Card(
-                        dbc.CardBody(
-                            [
-                                html.Div("⚠️  Müşteriyi en çok mutsuz eden faktör", className="text-muted"),
-                                html.H3("Teslimat Süresi", className="mt-2"),
-                                html.Div(
-                                    "Teslimat süresi uzadıkça 1 yıldızlı yorum ihtimali belirgin şekilde artıyor.",
-                                    className="text-muted",
-                                ),
-                            ]
-                        ),
-                        className="shadow-sm",
-                        style=CARD_STYLE,
+                    kpi_card(
+                        "En kritik problem",
+                        str(top_risk),
+                        "Teslimat uzadıkça mutsuzluk belirgin biçimde artıyor.",
+                        icon="⚠️",
                     ),
                     md=6,
                 ),
                 dbc.Col(
-                    dbc.Card(
-                        dbc.CardBody(
-                            [
-                                html.Div("⭐  5 yıldızlı deneyimi en çok zayıflatan faktör", className="text-muted"),
-                                html.H3("Gecikme ve beklentinin aşılması", className="mt-2"),
-                                html.Div(
-                                    "Sipariş beklenenden geç geldikçe 5 yıldızlı yorum ihtimali düşüyor.",
-                                    className="text-muted",
-                                ),
-                            ]
-                        ),
-                        className="shadow-sm",
-                        style=CARD_STYLE,
+                    kpi_card(
+                        "5★ deneyimini en çok bozan",
+                        str(top_drop5),
+                        "Sipariş beklenenden geç geldikçe 5★ olasılığı düşüyor.",
+                        icon="⭐",
                     ),
                     md=6,
                 ),
@@ -97,38 +141,40 @@ layout = dbc.Container(
             dbc.CardBody(
                 [
                     html.Div(
-                        "Nasıl okunur? Sağa uzayan çubuklar mutsuzluk riskini artırır, sola uzayanlar memnuniyeti destekler.",
+                        "Nasıl okunur? Çubuk uzadıkça etki güçlenir. "
+                        "Bu grafik teknik bir metrik değil; önceliklendirme (hangi probleme önce odaklanalım?) içindir.",
                         className="text-muted",
+                        style={"marginBottom": "10px"},
                     ),
-                    dcc.Graph(figure=fig, className="mt-2"),
+                    dcc.Graph(figure=fig, config={"displayModeBar": False}),
                 ]
             ),
-            className="shadow-sm mt-3",
+            className=SECTION_CARD_CLASS,
             style=CARD_STYLE,
         ),
 
         dbc.Card(
             dbc.CardBody(
                 [
-                    html.H5("Özet çıkarımlar", className="mb-2"),
+                    html.H5("Yönetim için net mesaj", className="mb-2"),
                     html.Ul(
                         [
-                            html.Li("Teslimat süresi ve gecikme arttıkça memnuniyetsizlik yükseliyor."),
-                            html.Li("Çok satıcılı siparişler daha fazla sorun yaratıyor."),
-                            html.Li("Fiyatın etkisi, operasyonel faktörlere kıyasla daha sınırlı."),
+                            html.Li("Öncelik 1: Teslimat süresini kısaltmak (SLA + izleme)."),
+                            html.Li("Öncelik 2: Gecikme riskinde erken uyarı ve operasyonel müdahale."),
+                            html.Li("Öncelik 3: Çok satıcılı siparişleri azaltmak / daha iyi orkestrasyon."),
                         ],
                         className="mb-0",
                     ),
                 ]
             ),
-            className="shadow-sm mt-3",
+            className=SECTION_CARD_CLASS,
             style=CARD_STYLE,
         ),
 
         dbc.Alert(
             [
-                html.B("Köprü mesajı: "),
-                "Bu operasyonel sorunların finansal bir karşılığı var. Bir sonraki sayfada mevcut kâr kırılımını (gelir–maliyet–net kâr) özetliyoruz.",
+                html.B("Köprü: "),
+                "Bu operasyonel sorunların finansal karşılığı var. Bir sonraki sayfada bunu gelir–maliyet–net kâr kırılımıyla gösteriyoruz.",
             ],
             color="primary",
             className="mt-3",

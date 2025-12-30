@@ -20,7 +20,7 @@ NAV_ITEMS = [
 navbar = dbc.Navbar(
     dbc.Container(
         [
-            dbc.NavbarBrand("Olist CEO Talebi Dashboard", href="/"),
+            dbc.NavbarBrand("Olist | Yönetim İçgörü Paneli", href="/"),
             dbc.Nav(
                 [
                     dbc.NavItem(dbc.NavLink(label, href=path, active="exact"))
