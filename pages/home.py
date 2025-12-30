@@ -209,7 +209,7 @@ layout = dbc.Container(
                 html.I(className="bi bi-arrow-right-circle-fill me-2"),
                 html.B("Eylem Planı: "),
                 "Zarar eden satıcıları simülasyondan çıkararak yeni Net Kâr potansiyelini görmek için ",
-                dcc.Link("Portföy Optimizasyonu", href="/simulasyon", className="fw-bold text-decoration-none"),
+                dcc.Link("Portföy Optimizasyonu", href="/satici-etkisi", className="fw-bold text-decoration-none"),
                 " sayfasına ilerleyin."
             ],
             color="info",
