@@ -86,3 +86,12 @@ Dosya: `pages/about.py`
 │   ├── logit_insights.py          # Memnuniyet Sürücüleri
 │   └── seller_impact.py           # Portföy Optimizasyonu
 └── README.md
+
+
+<img width="1336" height="1264" alt="image" src="https://github.com/user-attachments/assets/a1957cec-5fb7-417b-b801-a57d0d23e299" />
+<img width="1320" height="1027" alt="image" src="https://github.com/user-attachments/assets/3dc3f2ce-f7b5-4b3a-9e11-11a39ca7952e" />
+<img width="1315" height="1202" alt="image" src="https://github.com/user-attachments/assets/338283c0-d25d-4fc5-890f-24b32900658a" />
+<img width="1313" height="1210" alt="image" src="https://github.com/user-attachments/assets/116eaf37-9709-4aba-9376-2e42f5f45c09" />
+
+
+
